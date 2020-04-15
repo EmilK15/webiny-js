@@ -303,6 +303,7 @@ function install(root, dependencies, isOnline) {
       args.push('--offline');
     }
 
+    console.log(dependencies);
     [].push.apply(args, dependencies);
 
     // Explicitly set cwd() to work around issues like
@@ -345,7 +346,7 @@ function run(root, appName, originalDirectory, template) {
       }))
     )
     .then(({ isOnline, templateInfo }) => {
-      allDependencies.push(templateInfo);
+      allDependencies.push(templateInfo.name);
       return install(
         root,
         allDependencies,
