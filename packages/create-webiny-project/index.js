@@ -142,6 +142,26 @@ function createApp(projectName, template) {
   }
 }
 
+function executeNodeScript({ cwd, args }, data, source) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      [...args, '-e', source, '--', JSON.stringify(data)],
+      { cwd, stdio: 'inherit' }
+    );
+
+    child.on('close', code => {
+      if (code !== 0) {
+        reject({
+          command: `node ${args.join(' ')}`,
+        });
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
 function getPackageInfo(installPackage) {
   if (installPackage.match(/^.+\.(tgz|tar\.gz)$/)) {
     return getTemporaryDirectory()
@@ -330,61 +350,45 @@ function install(root, dependencies, isOnline) {
   });
 }
 
-function run(root, appName, originalDirectory, template) {
-  Promise.all([
-    getTemplateInstallPackage(template, originalDirectory)
-  ]).then(([templateToInstall]) => {
+async function run(root, appName, originalDirectory, template) {
+
+  const allDependencies = [];
+  try {
+    const templateToInstall = await getTemplateInstallPackage(template, originalDirectory);
     console.log('Installing packages. This might take a couple of minutes.');
-    const allDependencies = [];
-    Promise.all([
-      getPackageInfo(templateToInstall),
-    ])
-    .then(([templateInfo]) => 
-      checkIfOnline().then(isOnline => ({
-        isOnline,
-        templateInfo,
-      }))
-    )
-    .then(({ isOnline, templateInfo }) => {
-      allDependencies.push(templateInfo.name);
-      return install(
-        root,
-        allDependencies,
-        isOnline,
-      ).then(() => ({
-        templateInfo,
-      }));
-    })
-    .then(async ({ templateInfo }) => {
-      /**
-       * 
-        await executeNodeScript(
-          {
-            cwd: process.cwd(),
-            args: nodeArgs,
-          },
-          [root, appName, originalDirectory, templateName],
-          `
-        var init = require('${packageName}/scripts/init.js');
+    
+    const templateInfo = await getPackageInfo(templateToInstall);
+
+    const isOnline = await checkIfOnline();
+
+    allDependencies.push(templateInfo.name);
+
+    await install(root, allDependencies, isOnline);
+
+    await executeNodeScript(
+      {
+        cwd: process.cwd(),
+        args: [],
+      },
+      [root, appName, originalDirectory, templateInfo.name],
+      `
+        var init = require('./init.js');
         init.apply(null, JSON.parse(process.argv[1]));
       `
-        );
-       */
-    })
-    .catch(reason => {
-      console.log();
-      console.log('Aborting installation.');
-      if (reason.command) {
-        console.log(`  ${chalk.cyan(reason.command)} has failed.`);
-      } else {
-        console.log(
-          chalk.red('Unexpected error. Please report it as a bug:')
-        );
-        console.log(reason);
-      }
-      console.log();
-      console.log('Done.');
-      process.exit(1);
-    });
-  });
+    );
+  } catch(reason) {
+    console.log();
+    console.log('Aborting installation.');
+    if (reason.command) {
+      console.log(`  ${chalk.cyan(reason.command)} has failed.`);
+    } else {
+      console.log(
+        chalk.red('Unexpected error. Please report it as a bug:')
+      );
+      console.log(reason);
+    }
+    console.log();
+    console.log('Done.');
+    process.exit(1);
+  }
 };

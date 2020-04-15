@@ -1,5 +1,8 @@
 {
   "name": "hello-world",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "cwp-template-basic": "0.1.0"
+  }
 }

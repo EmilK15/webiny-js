@@ -1,7 +1,6 @@
 {
   "name": "cwp-template-basic",
   "version": "0.1.0",
-  "private": true,
   "dependencies": {
     "@webiny/app": "^3",
     "@webiny/app-admin": "^3",
