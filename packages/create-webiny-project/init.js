@@ -8,14 +8,13 @@ const chalk = require('chalk');
 const execSync = require('child_process').execSync;
 const fs = require('fs-extra');
 const path = require('path');
+const spawn = require('cross-spawn');
 const os = require('os');
 
 function tryGitInit() {
     try {
       execSync('git --version', { stdio: 'ignore' });
-      if (isInGitRepository() || isInMercurialRepository()) {
-        return false;
-      }
+      execSync('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
   
       execSync('git init', { stdio: 'ignore' });
       return true;
@@ -34,11 +33,58 @@ module.exports = function(root, appName, originalDirectory, templateName) {
         return;
     }
 
+    const templatePath = path.dirname(
+        require.resolve(`${templateName}/package.json`, { paths: [root] })
+    );
+
+    let templateJson = {};
+    const templateJsonPath = path.join(templatePath, 'package.json');
+
+    if (fs.existsSync(templateJsonPath)) {
+        templateJson = require(templateJsonPath);
+    }
+
+    // Keys to ignore in templatePackage
+    const templatePackageBlacklist = [
+        'name',
+        'version',
+        'description',
+        'keywords',
+        'bugs',
+        'license',
+        'author',
+        'contributors',
+        'files',
+        'browser',
+        'bin',
+        'man',
+        'directories',
+        'repository',
+        'bundledDependencies',
+        'optionalDependencies',
+        'engineStrict',
+        'os',
+        'cpu',
+        'preferGlobal',
+        'private',
+        'publishConfig',
+    ];
+
+    const templatePackageToReplace = Object.keys(templateJson).filter(key => {
+        return !templatePackageBlacklist.includes(key);
+    });
+
+    // Add templatePackage keys/values to appPackage, replacing existing entries
+    templatePackageToReplace.forEach(key => {
+        appPackage[key] = templateJson[key];
+    });
+
     fs.writeFileSync(
         path.join(root, 'package.json'),
         JSON.stringify(appPackage, null, 2) + os.EOL
     );
 
+    return;
     // modifies README.md commands based on user used package manager.
     try {
         const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
@@ -54,16 +100,17 @@ module.exports = function(root, appName, originalDirectory, templateName) {
     const gitignoreExists = fs.existsSync(path.join(root, '.gitignore'));
     if (gitignoreExists) {
         // Append if there's already a `.gitignore` file there
-        const data = fs.readFileSync(path.join(root, 'gitignore'));
-        fs.appendFileSync(path.join(root, '.gitignore'), data);
-        fs.unlinkSync(path.join(root, 'gitignore'));
+        if (fs.existsSync(path.join(root, 'gitignore'))) {
+            const data = fs.readFileSync(path.join(root, 'gitignore'));
+            fs.appendFileSync(path.join(root, '.gitignore'), data);
+        }
     } else {
         // Rename gitignore after the fact to prevent npm from renaming it to .npmignore
         // See: https://github.com/npm/npm/issues/1862
-        fs.moveSync(
-            path.join(root, 'gitignore'),
+        fs.writeFileSync(
             path.join(root, '.gitignore'),
-            []
+            '/node_modules',
+            'utf8',
         );
     }
 
@@ -78,15 +125,6 @@ module.exports = function(root, appName, originalDirectory, templateName) {
     const command = 'yarnpkg',
         remove = 'remove',
         args = ['add'];
-    
-    const templateDependencies = templatePackage.dependencies || templateJson.dependencies;
-    if (templateDependencies) {
-        args = args.concat(
-          Object.keys(templateDependencies).map(key => {
-            return `${key}@${templateDependencies[key]}`;
-          })
-        );
-    }
 
     if(templateName && args.length > 1) {
         console.log(`Installing template dependencies using ${command}...\n`);

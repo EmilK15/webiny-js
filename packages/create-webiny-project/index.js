@@ -314,14 +314,10 @@ function informationHandler() {
     .then(console.log);    
 };
 
-function install(root, dependencies, isOnline) {
+function install(root, dependencies) {
   return new Promise((resolve, reject) => {
     const command = 'yarnpkg';
     const args = ['add', '--exact'];
-
-    if (!isOnline) {
-      args.push('--offline');
-    }
 
     console.log(dependencies);
     [].push.apply(args, dependencies);
@@ -330,12 +326,6 @@ function install(root, dependencies, isOnline) {
     // https://github.com/facebook/create-react-app/issues/3326.
     args.push('--cwd');
     args.push(root);
-
-    if (!isOnline) {
-      console.log(chalk.yellow('You appear to be offline.'));
-      console.log(chalk.yellow('Falling back to the local Yarn cache.'));
-      console.log();
-    }
 
     const child = spawn(command, args, { stdio: 'inherit' });
     child.on('close', code => {
@@ -359,11 +349,9 @@ async function run(root, appName, originalDirectory, template) {
     
     const templateInfo = await getPackageInfo(templateToInstall);
 
-    const isOnline = await checkIfOnline();
-
     allDependencies.push(templateInfo.name);
 
-    await install(root, allDependencies, isOnline);
+    await install(root, allDependencies);
 
     await executeNodeScript(
       {
