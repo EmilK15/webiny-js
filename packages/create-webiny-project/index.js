@@ -14,8 +14,6 @@ const validateProjectName = require('validate-npm-package-name');
 
 const packageJson = require("./package.json");
 
-const templates = ['basic'];
-
 yargs
     .usage("Usage: $0 <project-name> [options]")
     .version(packageJson.version)
@@ -74,23 +72,6 @@ function checkAppName(appName) {
   }
 };
 
-function checkIfOnline() {
-  return new Promise(resolve => {
-    dns.lookup('registry.yarnpkg.com', err => {
-      let proxy;
-      if (err != null && (proxy = getProxy())) {
-        // If a proxy is defined, we likely can't resolve external hostnames.
-        // Try to resolve the proxy name as an indication of a connection.
-        dns.lookup(url.parse(proxy).hostname, proxyErr => {
-          resolve(proxyErr == null);
-        });
-      } else {
-        resolve(err == null);
-      }
-    });
-  });
-}
-
 function createApp(projectName, template) {
   if(!projectName) {
     console.log('You must provide a name for the project to use.');
@@ -117,23 +98,6 @@ function createApp(projectName, template) {
         JSON.stringify(packageJson, null, 2) + os.EOL
       );
       const originalDirectory = process.cwd();
-
-      // //for yarn usage
-      // let yarnUsesDefaultRegistry;
-      // try {
-      //   yarnUsesDefaultRegistry =
-      //     execSync('yarnpkg config get registry')
-      //       .toString()
-      //       .trim() === 'https://registry.yarnpkg.com';
-      // } catch (e) {
-      //   // ignore
-      // }
-      // if (yarnUsesDefaultRegistry) {
-      //   fs.copySync(
-      //     require.resolve('./yarn.lock.cached'),
-      //     path.join(root, 'yarn.lock')
-      //   );
-      // }
 
       run(root, appName, originalDirectory, template);
     } else {
@@ -319,7 +283,6 @@ function install(root, dependencies) {
     const command = 'yarnpkg';
     const args = ['add', '--exact'];
 
-    console.log(dependencies);
     [].push.apply(args, dependencies);
 
     // Explicitly set cwd() to work around issues like
@@ -360,7 +323,7 @@ async function run(root, appName, originalDirectory, template) {
       },
       [root, appName, originalDirectory, templateInfo.name],
       `
-        var init = require('./init.js');
+        var init = require('${templateInfo.name}/scripts/init.js');
         init.apply(null, JSON.parse(process.argv[1]));
       `
     );
