@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 const chalk = require("chalk");
-const dns = require('dns');
 const envinfo = require("envinfo");
-const execSync = require('child_process').execSync;
 const fs = require('fs-extra');
 const hyperquest = require('hyperquest');
 const os = require('os');
@@ -13,6 +11,7 @@ const yargs = require("yargs");
 const validateProjectName = require('validate-npm-package-name');
 
 const packageJson = require("./package.json");
+const init = require('./init.js');
 
 yargs
     .usage("Usage: $0 <project-name> [options]")
@@ -104,26 +103,6 @@ function createApp(projectName, template) {
       console.log('Invalid template, we currently support "basic".')
     }
   }
-}
-
-function executeNodeScript({ cwd, args }, data, source) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      process.execPath,
-      [...args, '-e', source, '--', JSON.stringify(data)],
-      { cwd, stdio: 'inherit' }
-    );
-
-    child.on('close', code => {
-      if (code !== 0) {
-        reject({
-          command: `node ${args.join(' ')}`,
-        });
-        return;
-      }
-      resolve();
-    });
-  });
 }
 
 function getPackageInfo(installPackage) {
@@ -285,8 +264,6 @@ function install(root, dependencies) {
 
     [].push.apply(args, dependencies);
 
-    // Explicitly set cwd() to work around issues like
-    // https://github.com/facebook/create-react-app/issues/3326.
     args.push('--cwd');
     args.push(root);
 
@@ -316,17 +293,7 @@ async function run(root, appName, originalDirectory, template) {
 
     await install(root, allDependencies);
 
-    await executeNodeScript(
-      {
-        cwd: process.cwd(),
-        args: [],
-      },
-      [root, appName, originalDirectory, templateInfo.name],
-      `
-        var init = require('${templateInfo.name}/scripts/init.js');
-        init.apply(null, JSON.parse(process.argv[1]));
-      `
-    );
+    await init(root, appName, originalDirectory, templateInfo.name);
   } catch(reason) {
     console.log();
     console.log('Aborting installation.');
@@ -338,6 +305,7 @@ async function run(root, appName, originalDirectory, template) {
       );
       console.log(reason);
     }
+
     console.log();
     console.log('Done.');
     process.exit(1);

@@ -1,6 +1,10 @@
 {
     "name": "cwp-template-basic",
-    "version": "0.1.22",
+    "version": "0.1.24",
+    "repository": {
+      "type": "git",
+      "directory": "packages/cwp-template-basic"
+    },
     "dependencies": {
         "@webiny/app": "^3",
         "@webiny/app-admin": "^3",

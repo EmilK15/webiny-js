@@ -84,18 +84,6 @@ module.exports = function(root, appName, originalDirectory, templateName) {
         JSON.stringify(appPackage, null, 2) + os.EOL
     );
 
-    // modifies README.md commands based on user used package manager.
-    try {
-        const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-        fs.writeFileSync(
-            path.join(root, 'README.md'),
-            readme.replace(/(npm run |npm )/g, 'yarn '),
-            'utf8'
-        );
-    } catch (err) {
-        // Silencing the error. As it fall backs to using default npm commands.
-    }
-
     // Copy the files for the user
     const templateDir = path.join(templatePath, 'template');
     if (fs.existsSync(templateDir)) {
@@ -137,6 +125,24 @@ module.exports = function(root, appName, originalDirectory, templateName) {
           return;
         }
     }
+
+    //remove generated files
+    const knownGeneratedFiles = [
+        'package.json',
+        'yarn.lock',
+        'node_modules',
+    ];
+    
+    const currentFiles = fs.readdirSync(path.join(originalDirectory));
+    currentFiles.forEach(file => {
+        knownGeneratedFiles.forEach(fileToMatch => {
+            // This removes all knownGeneratedFiles.
+            if (file === fileToMatch) {
+            console.log(`Deleting generated file... ${chalk.cyan(file)}`);
+            fs.removeSync(path.join(originalDirectory, file));
+            }
+        });
+    });
 
     // Remove template
     console.log(`Removing template package using ${command}...`);
