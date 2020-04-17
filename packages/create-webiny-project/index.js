@@ -79,6 +79,7 @@ function createApp(projectName, template) {
       const root = path.resolve(projectName);
       const appName = path.basename(root);
 
+      //Make sure the name provided is following npm package nomenclature
       checkAppName(appName);
       fs.ensureDirSync(projectName);
 
@@ -89,6 +90,7 @@ function createApp(projectName, template) {
         version: '0.1.0',
         private: true,
       };
+      //prettifies the package.json
       fs.writeFileSync(
         path.join(root, 'package.json'),
         JSON.stringify(packageJson, null, 2) + os.EOL
@@ -227,7 +229,6 @@ function install(root, dependencies) {
 }
 
 async function run(root, appName, originalDirectory, template) {
-
   const allDependencies = [];
   try {
     console.log('Installing packages. This might take a couple of minutes.');
@@ -240,19 +241,15 @@ async function run(root, appName, originalDirectory, template) {
 
     await init(root, appName, originalDirectory, templateInfo.name);
   } catch(reason) {
-    console.log();
-    console.log('Aborting installation.');
+    console.log('\nAborting installation.');
     if (reason.command) {
       console.log(`  ${chalk.cyan(reason.command)} has failed.`);
     } else {
-      console.log(
-        chalk.red('Unexpected error. Please report it as a bug:')
-      );
+      console.log(chalk.red('Unexpected error. Please report it as a bug:'));
       console.log(reason);
     }
 
-    console.log();
-    console.log('Done.');
+    console.log('\nDone.');
     process.exit(1);
   }
 };
