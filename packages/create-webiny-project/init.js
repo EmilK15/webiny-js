@@ -11,19 +11,6 @@ const path = require('path');
 const spawn = require('cross-spawn');
 const os = require('os');
 
-function tryGitInit() {
-    try {
-      execSync('git --version', { stdio: 'ignore' });
-      execSync('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
-  
-      execSync('git init', { stdio: 'ignore' });
-      return true;
-    } catch (e) {
-      console.warn('Git repo not initialized', e);
-      return false;
-    }
-}
-
 module.exports = function(root, appName, originalDirectory, templateName) {
 
     const appPackage = require(path.join(root, 'package.json'));
@@ -95,72 +82,25 @@ module.exports = function(root, appName, originalDirectory, templateName) {
         return;
     }
 
-    // Initialize git repo
-    let initializedGit = false;
-
-    if (tryGitInit()) {
-        initializedGit = true;
-        console.log();
-        console.log('Initialized a git repository.');
-    }
-    const command = 'yarnpkg',
-        remove = 'remove';
-
-    let args = ['add'];
-
-    const templateDependencies = appPackage.dependencies;
-    if (templateDependencies) {
-        args = args.concat(
-          Object.keys(templateDependencies).map(key => {
-            return `${key}@${templateDependencies[key]}`;
-          })
-        );
+    //initialize git repo
+    try {
+        execSync('git --version', { stdio: 'ignore' });
+        execSync('git init', { stdio: 'ignore' });
+        console.log('\nInitialized a git repository.');
+        fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/');
+    } catch(err) {
+        console.warn('Git repo not initialized', err);
     }
 
-    if(templateName && args.length > 1) {
-        console.log(`Installing template dependencies using ${command}...\n`);
-        const proc = spawn.sync(command, args, { stdio: 'inherit' });
-        if (proc.status !== 0) {
-          console.error(`\`${command} ${args.join(' ')}\` failed`);
-          return;
-        }
-    }
+    // Remove template from dependencies
 
-    //remove generated files
-    const knownGeneratedFiles = [
-        'package.json',
-        'yarn.lock',
-        'node_modules',
-    ];
-    
-    const currentFiles = fs.readdirSync(path.join(originalDirectory));
-    currentFiles.forEach(file => {
-        knownGeneratedFiles.forEach(fileToMatch => {
-            // This removes all knownGeneratedFiles.
-            if (file === fileToMatch) {
-            console.log(`Deleting generated file... ${chalk.cyan(file)}`);
-            fs.removeSync(path.join(originalDirectory, file));
-            }
-        });
-    });
-
-    // Remove template
-    console.log(`Removing template package using ${command}...`);
-    console.log();
-
-    const proc = spawn.sync(command, [remove, templateName], {
-        stdio: 'inherit',
-    });
-    if (proc.status !== 0) {
-        console.error(`\`${command} ${args.join(' ')}\` failed`);
-        return;
-    }
-
-    // Create git commit if git repo was initialized
-    if (initializedGit && tryGitCommit(root)) {
-        console.log();
-        console.log('Created git commit.');
-    }
+    // const proc = spawn.sync(command, [remove, templateName], {
+    //     stdio: 'inherit',
+    // });
+    // if (proc.status !== 0) {
+    //     console.error(`\`${command} ${args.join(' ')}\` failed`);
+    //     return;
+    // }
 
     // Display how to cd
     let cdpath;

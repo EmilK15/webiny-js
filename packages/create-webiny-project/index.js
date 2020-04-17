@@ -82,10 +82,7 @@ function createApp(projectName, template) {
       checkAppName(appName);
       fs.ensureDirSync(projectName);
 
-      console.log();
-
-      console.log(`Creating your webiny app in ${chalk.green(root)}.`);
-      console.log();
+      console.log(`\nCreating your webiny app in ${chalk.green(root)}.\n`);
 
       const packageJson = {
         name: appName,
@@ -105,29 +102,25 @@ function createApp(projectName, template) {
   }
 }
 
-function getPackageInfo(installPackage) {
+async function getPackageInfo(installPackage) {
   if (installPackage.match(/^.+\.(tgz|tar\.gz)$/)) {
-    return getTemporaryDirectory()
-      .then(obj => {
-        let stream;
-        if (/^http/.test(installPackage)) {
-          stream = hyperquest(installPackage);
-        } else {
-          stream = fs.createReadStream(installPackage);
-        }
-        return extractStream(stream, obj.tmpdir).then(() => obj);
-      })
-      .then(obj => {
-        const { name, version } = require(path.join(
-          obj.tmpdir,
-          'package.json'
-        ));
-        obj.cleanup();
-        return { name, version };
-      })
-      .catch(err => {
-        // The package name could be with or without semver version, e.g. react-scripts-0.2.0-alpha.1.tgz
-        // However, this function returns package name only without semver version.
+    try {
+      const obj = await getTemporaryDirectory();
+      let stream;
+      if (/^http/.test(installPackage)) {
+        stream = hyperquest(installPackage);
+      } else {
+        stream = fs.createReadStream(installPackage);
+      }
+      await extractStream(stream, obj.tmpdir);
+
+      const { name, version } = require(path.join(
+        obj.tmpdir,
+        'package.json'
+      ));
+      obj.cleanup();
+      return { name, version };
+    } catch (err) {
         console.log(
           `Could not extract the package name from the archive: ${err.message}`
         );
@@ -139,76 +132,29 @@ function getPackageInfo(installPackage) {
             assumedProjectName
           )}"`
         );
-        return Promise.resolve({ name: assumedProjectName });
-      });
+        return { name: assumedProjectName };
+    }
   } else if (installPackage.startsWith('git+')) {
     // Pull package name out of git urls e.g:
-    // git+https://github.com/mycompany/react-scripts.git
-    // git+ssh://github.com/mycompany/react-scripts.git#v1.2.3
-    return Promise.resolve({
-      name: installPackage.match(/([^/]+)\.git(#.*)?$/)[1],
-    });
+    // git+https://github.com/mycompany/package.git
+    // git+ssh://github.com/mycompany/package.git#v1.2.3
+    const packageNameGit = await installPackage.match(/([^/]+)\.git(#.*)?$/)[1];
+    return { name: packageNameGit };
   } else if (installPackage.match(/.+@/)) {
     // Do not match @scope/ when stripping off @version or @tag
-    return Promise.resolve({
+    return {
       name: installPackage.charAt(0) + installPackage.substr(1).split('@')[0],
-      version: installPackage.split('@')[1],
-    });
+      version: installPackage.split('@')[1]
+    };
   } else if (installPackage.match(/^file:/)) {
     const installPackagePath = installPackage.match(/^file:(.*)?$/)[1];
     const { name, version } = require(path.join(
       installPackagePath,
       'package.json'
     ));
-    return Promise.resolve({ name, version });
+    return { name, version };
   }
-  return Promise.resolve({ name: installPackage });
-}
-
-function getTemplateInstallPackage(template, originalDirectory) {
-  let templateToInstall = 'cwp-template';
-  if (template) {
-    if (template.match(/^file:/)) {
-      templateToInstall = `file:${path.resolve(
-        originalDirectory,
-        template.match(/^file:(.*)?$/)[1]
-      )}`;
-    } else if (
-      template.includes('://') ||
-      template.match(/^.+\.(tgz|tar\.gz)$/)
-    ) {
-      // for tar.gz or alternative paths
-      templateToInstall = template;
-    } else {
-      // Add prefix 'cwp-template-' to non-prefixed templates, leaving any
-      // @scope/ intact.
-      const packageMatch = template.match(/^(@[^/]+\/)?(.+)$/);
-      const scope = packageMatch[1] || '';
-      const templateName = packageMatch[2];
-
-      if (
-        templateName === templateToInstall ||
-        templateName.startsWith(`${templateToInstall}-`)
-      ) {
-        // Covers:
-        // - cwp-template-basic
-        // - @SCOPE/cwp-template-basic
-        // - cwp-template-NAME
-        // - @SCOPE/cwp-template-NAME
-        templateToInstall = `${scope}${templateName}`;
-      } else if (templateName.startsWith('@')) {
-        // Covers using @SCOPE only
-        templateToInstall = `${templateName}/${templateToInstall}`;
-      } else {
-        // Covers templates without the `cwp-template` prefix:
-        // - NAME
-        // - @SCOPE/NAME
-        templateToInstall = `${scope}${templateToInstall}-${templateName}`;
-      }
-    }
-  }
-
-  return Promise.resolve(templateToInstall);
+  return { name: installPackage };
 }
 
 function getTemporaryDirectory() {
@@ -284,10 +230,9 @@ async function run(root, appName, originalDirectory, template) {
 
   const allDependencies = [];
   try {
-    const templateToInstall = await getTemplateInstallPackage(template, originalDirectory);
     console.log('Installing packages. This might take a couple of minutes.');
     
-    const templateInfo = await getPackageInfo(templateToInstall);
+    const templateInfo = await getPackageInfo('cwp-template-' + template);
 
     allDependencies.push(templateInfo.name);
 
