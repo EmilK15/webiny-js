@@ -83,7 +83,7 @@ function createApp(projectName, template) {
       checkAppName(appName);
       fs.ensureDirSync(projectName);
 
-      console.log(`\nCreating your webiny app in ${chalk.green(root)}.\n`);
+      console.log(`\nCreating your Webiny app in ${chalk.green(root)}.\n`);
 
       const packageJson = {
         name: appName,
@@ -95,11 +95,10 @@ function createApp(projectName, template) {
         path.join(root, 'package.json'),
         JSON.stringify(packageJson, null, 2) + os.EOL
       );
-      const originalDirectory = process.cwd();
 
-      run(root, appName, originalDirectory, template);
+      run(root, appName, template);
     } else {
-      console.log('Invalid template, we currently support "basic".')
+      console.log('Invalid template name, we currently support "basic".')
     }
   }
 }
@@ -116,10 +115,7 @@ async function getPackageInfo(installPackage) {
       }
       await extractStream(stream, obj.tmpdir);
 
-      const { name, version } = require(path.join(
-        obj.tmpdir,
-        'package.json'
-      ));
+      const { name, version } = require(path.join(obj.tmpdir, 'package.json'));
       obj.cleanup();
       return { name, version };
     } catch (err) {
@@ -159,28 +155,14 @@ async function getPackageInfo(installPackage) {
   return { name: installPackage };
 }
 
-function getTemporaryDirectory() {
-  return new Promise((resolve, reject) => {
-    // Unsafe cleanup lets us recursively delete the directory if it contains
-    // contents; by default it only allows removal if it's empty
-    tmp.dir({ unsafeCleanup: true }, (err, tmpdir, callback) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({
-          tmpdir: tmpdir,
-          cleanup: () => {
-            try {
-              callback();
-            } catch (ignored) {
-              // Callback might throw and fail, since it's a temp directory the
-              // OS will clean it up eventually...
-            }
-          },
-        });
-      }
-    });
-  });
+async function getTemporaryDirectory() {
+  try {
+    const { tmpdir, callback } = await tmp.dir({ unsafeCleanup: true });
+    console.log(callback);
+    return { tmpdir, cleanup: () => callback() };
+  } catch (err) {
+    return err;
+  }
 }
 
 function informationHandler() {
@@ -208,17 +190,14 @@ function informationHandler() {
 async function install(root, dependencies) {
     const command = 'yarnpkg';
     const args = ['add', '--exact'];
-
     [].push.apply(args, dependencies);
-
     args.push('--cwd');
     args.push(root);
-
     await execa(command, args, { stdio: 'inherit' });
     return;
 }
 
-async function run(root, appName, originalDirectory, template) {
+async function run(root, appName, template) {
   const allDependencies = [];
   try {
     console.log('Installing packages. This might take a couple of minutes.');
@@ -229,7 +208,7 @@ async function run(root, appName, originalDirectory, template) {
 
     await install(root, allDependencies);
 
-    await init(root, appName, originalDirectory, templateInfo.name);
+    await init(root, appName, templateInfo.name);
   } catch(reason) {
     console.log('\nAborting installation.');
     if (reason.command) {

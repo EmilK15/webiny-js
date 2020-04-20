@@ -10,7 +10,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const os = require('os');
 
-module.exports = function(root, appName, originalDirectory, templateName) {
+module.exports = function(root, appName, templateName) {
     const appPackage = require(path.join(root, 'package.json'));
 
     if(!templateName) {
@@ -74,9 +74,7 @@ module.exports = function(root, appName, originalDirectory, templateName) {
     if (fs.existsSync(templateDir)) {
         fs.copySync(templateDir, root);
       } else {
-        console.error(
-          `Could not locate supplied template: ${chalk.green(templateDir)}`
-        );
+        console.error(`Could not locate supplied template: ${chalk.green(templateDir)}`);
         return;
     }
 
@@ -91,7 +89,6 @@ module.exports = function(root, appName, originalDirectory, templateName) {
     }
 
     // Remove template from dependencies
-
     try {
         execa.sync('yarn', ['remove', templateName], {
             cwd: root
@@ -100,17 +97,9 @@ module.exports = function(root, appName, originalDirectory, templateName) {
         console.error('Unable to remove ' + templateName);
     }
 
-    // Display how to cd
-    let cdpath;
-    if (originalDirectory && path.join(originalDirectory, appName) === root) {
-        cdpath = appName;
-    } else {
-        cdpath = root;
-    }
-
     console.log(`Success! Created ${appName} at ${root}`);
     console.log('Inside that directory, you can run several commands:\n');
     console.log('We suggest that you begin by typing:\n');
-    console.log(chalk.cyan('  cd'), cdpath);
+    console.log(chalk.cyan('  cd'), appName);
     console.log('Happy hacking!');
 }
