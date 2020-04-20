@@ -5,14 +5,12 @@ process.on('unhandledRejection', err => {
 });
 
 const chalk = require('chalk');
-const execSync = require('child_process').execSync;
+const execa = require('execa');
 const fs = require('fs-extra');
 const path = require('path');
-const spawn = require('cross-spawn');
 const os = require('os');
 
 module.exports = function(root, appName, originalDirectory, templateName) {
-
     const appPackage = require(path.join(root, 'package.json'));
 
     if(!templateName) {
@@ -84,8 +82,8 @@ module.exports = function(root, appName, originalDirectory, templateName) {
 
     //initialize git repo
     try {
-        execSync('git --version', { stdio: 'ignore' });
-        execSync('git init', { stdio: 'ignore' });
+        execa.sync('git',  ['--version']);
+        execa.sync('git', ['init']);
         console.log('\nInitialized a git repository.');
         fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/');
     } catch(err) {
@@ -94,13 +92,12 @@ module.exports = function(root, appName, originalDirectory, templateName) {
 
     // Remove template from dependencies
 
-    // const proc = spawn.sync(command, [remove, templateName], {
-    //     stdio: 'inherit',
-    // });
-    // if (proc.status !== 0) {
-    //     console.error(`\`${command} ${args.join(' ')}\` failed`);
-    //     return;
-    // }
+    try {
+        execa.sync('yarn', ['--cwd', root,'remove', templateName]);
+    } catch (err) {
+        console.log(err);
+        console.error('Unable to remove ' + templateName);
+    }
 
     // Display how to cd
     let cdpath;
