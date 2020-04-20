@@ -5,7 +5,7 @@ const fs = require('fs-extra');
 const hyperquest = require('hyperquest');
 const os = require('os');
 const path = require('path');
-const spawn = require('cross-spawn');
+const execa = require('execa');
 const tmp = require('tmp');
 const yargs = require("yargs");
 const validateProjectName = require('validate-npm-package-name');
@@ -205,8 +205,7 @@ function informationHandler() {
     .then(console.log);    
 };
 
-function install(root, dependencies) {
-  return new Promise((resolve, reject) => {
+async function install(root, dependencies) {
     const command = 'yarnpkg';
     const args = ['add', '--exact'];
 
@@ -215,17 +214,8 @@ function install(root, dependencies) {
     args.push('--cwd');
     args.push(root);
 
-    const child = spawn(command, args, { stdio: 'inherit' });
-    child.on('close', code => {
-      if (code !== 0) {
-        reject({
-          command: `${command} ${args.join(' ')}`,
-        });
-        return;
-      }
-      resolve();
-    });
-  });
+    await execa(command, args, { stdio: 'inherit' });
+    return;
 }
 
 async function run(root, appName, originalDirectory, template) {

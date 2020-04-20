@@ -26,7 +26,6 @@
         "apollo-link-batch-http": "^1.2.3",
         "core-js": "^3.2.1",
         "cross-fetch": "^3.0.2",
-        "cwp-template-basic": "^0.1",
         "emotion": "^10.0.27",
         "react-apollo": "^3.1.0",
         "react-hot-loader": "^4.3.5",

@@ -93,9 +93,10 @@ module.exports = function(root, appName, originalDirectory, templateName) {
     // Remove template from dependencies
 
     try {
-        execa.sync('yarn', ['--cwd', root,'remove', templateName]);
+        execa.sync('yarn', ['remove', templateName], {
+            cwd: root
+        });
     } catch (err) {
-        console.log(err);
         console.error('Unable to remove ' + templateName);
     }
 
