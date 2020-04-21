@@ -90,16 +90,17 @@ module.exports = function(root, appName, templateName) {
 
 	// Remove template from dependencies
 	try {
-		execa.sync("yarn", ["remove", templateName], {
-			cwd: root
-		});
+        execa.sync("rm", ["-r", "node_modules/" + templateName], {
+            cwd: root,
+        });
 	} catch (err) {
+        console.log(err);
 		console.error("Unable to remove " + templateName);
 	}
 
 	console.log(`Success! Created ${appName} at ${root}`);
 	console.log("Inside that directory, you can run several commands:\n");
-	console.log("We suggest that you begin by typing:\n");
+	console.log("You can begin by typing:\n");
 	console.log(chalk.cyan("  cd"), appName);
 	console.log("Happy hacking!");
 };

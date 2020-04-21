@@ -205,7 +205,7 @@ function informationHandler() {
 async function install(root, dependencies) {
 	const command = "yarnpkg";
 	const args = ["add", "--exact"];
-	[].push.apply(args, dependencies);
+  [].push.apply(args, dependencies);
 	args.push("--cwd");
 	args.push(root);
 	await execa(command, args, { stdio: "inherit" });
